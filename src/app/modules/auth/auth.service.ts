@@ -25,11 +25,29 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
         throw new Error("Failed to register Patient")
     }
 
-    // const patient = await prisma.$transaction( async (tx) => {
-    //     await 
-    // })
+    try {
+        const patient = await prisma.$transaction(async (tx) => {
+            const patientTx = await tx.patient.create({
+                data: {
+                    userId: data.user.id,
+                    name: payload.name,
+                    email: payload.email
+                },
+            })
+            return patientTx;
+        });
 
-    return data;
+        return {
+            ...data,
+            patient
+        };
+    } catch (error) {
+        console.log(`Transaction error: ${error}`)
+        await prisma.user.delete({
+            where: { id: data.user.id }
+        })
+        throw error;
+    }
 };
 
 interface ILoginUserPayload {
@@ -50,7 +68,7 @@ const loginUser = async (payload: ILoginUserPayload) => {
     if (data.user.isDeleted || data.user.status === UserStatus.DELETED) {
         throw new Error("User is Deleted");
     };
-    
+
     return data;
 };
 
