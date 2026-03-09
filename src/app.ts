@@ -3,6 +3,8 @@ import { prisma } from "./app/lib/prisma";
 import { IndexRoutes } from "./app/routes";
 import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
 import { notFound } from "./app/middleware/notFound";
+import AppError from "./app/errorHelper/AppError";
+import status from "http-status";
 
 const app: Application = express()
 
@@ -17,11 +19,7 @@ app.use("/api/v1", IndexRoutes);
 
 // Basic route
 app.get('/', async(req: Request, res: Response) => {
-  const specialty = await prisma.speciality.create({
-    data: {
-      title: "Cardiology"
-    }
-  })
+  throw new AppError(status.BAD_REQUEST, "Just testing error handler")
   res.status(201).json({
     success: true,
     data: specialty,
