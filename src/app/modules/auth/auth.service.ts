@@ -3,6 +3,7 @@ import { UserStatus } from "../../../generated/prisma/enums";
 import AppError from "../../errorHelper/AppError";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
+import { tokenUtils } from "../../utils/token";
 
 interface IRegisterPatientPayload {
     name: string;
@@ -40,8 +41,30 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
             return patientTx;
         });
 
+        const accessToken = tokenUtils.getAccessToken({
+            userId: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            status: data.user.status,
+            emailVerified: data.user.emailVerified,
+            isDeleted: data.user.isDeleted,
+        });
+
+        const refreshToken = tokenUtils.getRefreshToken({
+            userId: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            status: data.user.status,
+            emailVerified: data.user.emailVerified,
+            isDeleted: data.user.isDeleted,
+        });
+
         return {
             ...data,
+            accessToken,
+            refreshToken,
             patient
         };
     } catch (error) {
@@ -72,7 +95,31 @@ const loginUser = async (payload: ILoginUserPayload) => {
         throw new AppError(status.NOT_FOUND, "User is Deleted");
     };
 
-    return data;
+    const accessToken = tokenUtils.getAccessToken({
+        userId: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        status: data.user.status,
+        emailVerified: data.user.emailVerified,
+        isDeleted: data.user.isDeleted,
+    });
+
+    const refreshToken = tokenUtils.getRefreshToken({
+        userId: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        status: data.user.status,
+        emailVerified: data.user.emailVerified,
+        isDeleted: data.user.isDeleted,
+    });
+
+    return {
+        ...data,
+        accessToken,
+        refreshToken,
+    };
 };
 
 export const AuthService = {

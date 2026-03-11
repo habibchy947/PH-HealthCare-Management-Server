@@ -19,10 +19,9 @@ app.use("/api/v1", IndexRoutes);
 
 // Basic route
 app.get('/', async(req: Request, res: Response) => {
-  throw new AppError(status.BAD_REQUEST, "Just testing error handler")
+  // throw new AppError(status.BAD_REQUEST, "Just testing error handler")
   res.status(201).json({
     success: true,
-    data: specialty,
     message: "API is working"
   })
 });
