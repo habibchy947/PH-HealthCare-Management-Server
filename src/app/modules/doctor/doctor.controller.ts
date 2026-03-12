@@ -16,6 +16,9 @@ const getAllDoctors = catchAsync(
     },
 );
 
+
+
 export const DoctorController = {
     getAllDoctors,
+    getDoctorById,
 };
