@@ -4,6 +4,10 @@ import AppError from "../../errorHelper/AppError";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { tokenUtils } from "../../utils/token";
+import { IRequestUser } from "../../interfaces/reqUser.interface";
+import { jwtUtils } from "../../utils/jwt";
+import { envVars } from "../../../config/env";
+import { JwtPayload } from "jsonwebtoken";
 
 interface IRegisterPatientPayload {
     name: string;
@@ -122,7 +126,99 @@ const loginUser = async (payload: ILoginUserPayload) => {
     };
 };
 
+const getMe = async (user: IRequestUser) => {
+    const isUserExists = await prisma.user.findUnique({
+        where: { id: user.userId },
+        include: {
+            patient: {
+                include: {
+                    appointments: true,
+                    reviews: true,
+                    prescriptions: true,
+                    medicalReports: true,
+                    patientHealthData: true,
+                },
+            },
+            doctor: {
+                include: {
+                    specialties: true,
+                    appointments: true,
+                    reviews: true,
+                    prescriptions: true,
+                },
+            },
+            admin: true,
+        },
+    });
+    if (!isUserExists) {
+        throw new AppError(status.NOT_FOUND, "User not found");
+    };
+    return isUserExists;
+};
+
+const getNewToken = async (refreshToken: string, sessionToken: string) => {
+    const isSessionTokenExists = await prisma.session.findUnique({
+        where: {
+            token: sessionToken,
+        },
+        include: {
+            user: true,
+        },
+    });
+
+    if (!isSessionTokenExists) {
+        throw new AppError(status.UNAUTHORIZED, "Invalid session token");
+    };
+
+    const verifiedRefreshToken = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+    if (!verifiedRefreshToken.success && verifiedRefreshToken.error) {
+        throw new AppError(status.UNAUTHORIZED, "Invalid Refresh Token")
+    };
+
+    const data = verifiedRefreshToken.data as JwtPayload;
+    
+    const newAccessToken = tokenUtils.getAccessToken({
+        userId: data.userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        status: data.status,
+        emailVerified: data.emailVerified,
+        isDeleted: data.isDeleted,
+    });
+
+    const newRefreshToken = tokenUtils.getRefreshToken({
+        userId: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        status: data.status,
+        emailVerified: data.emailVerified,
+        isDeleted: data.isDeleted,
+    });
+
+    const {token} = await prisma.session.update({
+        where: {
+            token: sessionToken,
+        },
+        data: {
+            token: sessionToken,
+            expiresAt: new Date(Date.now() + 60 * 60 * 60 * 24 * 1000),
+            updatedAt: new Date(),
+        },
+    });
+
+    return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        sessionToken: token,
+    };
+};
+
 export const AuthService = {
     registerPatient,
-    loginUser
+    loginUser,
+    getMe,
+    getNewToken,
 };
